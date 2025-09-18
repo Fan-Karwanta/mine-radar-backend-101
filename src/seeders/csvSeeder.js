@@ -236,7 +236,7 @@ export const seedDirectoryHotspots = async () => {
     // Clear existing data
     await DirectoryHotspots.deleteMany({});
     
-    const csvFilePath = path.join(process.cwd(), 'csv_files', 'Directory Hotspots.xlsx - All.csv');
+    const csvFilePath = path.join(process.cwd(), 'csv_files', 'Directory Hotspots ALL.xlsx - ALL (1).csv');
     const results = [];
     
     return new Promise((resolve, reject) => {
@@ -255,50 +255,95 @@ export const seedDirectoryHotspots = async () => {
               console.log('Clean data sample:', cleanData);
             }
             
-            // Map CSV columns to schema fields with more flexible key matching
+            // Map CSV columns to schema fields - handling all 18 columns from the new CSV structure
             const record = {
               subject: cleanData['Subject'] || cleanData['Subject '] || '',
               complaintNumber: cleanData['Complaint Number'] || '',
               province: cleanData['Province'] || '',
-              municipality: cleanData['Municipality / City'] || cleanData['Municipality /\nCity'] || cleanData['Municipality /City'] || '',
+              municipality: cleanData['Municipality / \nCity'] || cleanData['Municipality /\nCity'] || cleanData['Municipality / City'] || cleanData['Municipality /City'] || '',
               barangay: cleanData['Barangay'] || '',
               sitio: cleanData['Sitio'] || '',
               longitude: cleanData['Longitude'] || '',
               latitude: cleanData['Latitude'] || '',
-              googleMapLink: cleanData['Google Map Link (Location Point)'] || cleanData['Google Map Link\n(Location Point)'] || '',
+              googleMapLink: cleanData['Google Map Link\n(Location Point)'] || cleanData['Google Map Link (Location Point)'] || cleanData['Google Map Link'] || '',
               natureOfReportedIllegalAct: cleanData['Nature of Reported Illegal Act'] || '',
               typeOfCommodity: cleanData['Type of Commodity (Non-metallics)'] || '',
               actionsTaken: cleanData['Actions Taken'] || '',
               details: cleanData['Details'] || cleanData['Details '] || '',
-              dateOfActionTaken: cleanData['Date of Action Taken (mm/dd/yyyy)'] || cleanData['Date of\nAction Taken (mm/dd/yyyy)'] || '',
+              dateOfActionTaken: cleanData['Date of\nAction Taken (mm/dd/yyyy)'] || cleanData['Date of Action Taken (mm/dd/yyyy)'] || '',
               lawsViolated: cleanData['Laws Violated'] || '',
               numberOfCDOIssued: parseNumber(cleanData['No. of CDO Issued']),
               dateIssued: cleanData['Date Issued (mm/dd/yyyy)'] || '',
               remarks: cleanData['Remarks'] || ''
             };
             
-            // More lenient validation - only require complaint number and subject
-            if (record.complaintNumber && record.complaintNumber.trim() !== '' && 
-                record.subject && record.subject.trim() !== '') {
+            // More lenient validation - only require subject (complaint number can be generated)
+            if (record.subject && record.subject.trim() !== '') {
+              
+              // Generate complaint number if missing
+              if (!record.complaintNumber || record.complaintNumber.trim() === '' || record.complaintNumber === 'ND') {
+                record.complaintNumber = `GENERATED-HOTSPOT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              }
               
               // Provide defaults for required fields
-              if (!record.province || record.province === '') {
+              if (!record.province || record.province === '' || record.province === 'ND') {
                 record.province = 'Unknown';
               }
-              if (!record.municipality || record.municipality === '') {
+              if (!record.municipality || record.municipality === '' || record.municipality === 'ND') {
                 record.municipality = 'Unknown';
               }
-              if (!record.barangay || record.barangay === '') {
+              if (!record.barangay || record.barangay === '' || record.barangay === 'ND') {
                 record.barangay = 'Unknown';
               }
-              if (!record.natureOfReportedIllegalAct || record.natureOfReportedIllegalAct === '') {
+              if (!record.natureOfReportedIllegalAct || record.natureOfReportedIllegalAct === '' || record.natureOfReportedIllegalAct === 'ND') {
                 record.natureOfReportedIllegalAct = 'Unknown';
               }
-              if (!record.typeOfCommodity || record.typeOfCommodity === '') {
+              if (!record.typeOfCommodity || record.typeOfCommodity === '' || record.typeOfCommodity === 'ND') {
                 record.typeOfCommodity = 'Unknown';
               }
-              if (!record.actionsTaken || record.actionsTaken === '') {
+              if (!record.actionsTaken || record.actionsTaken === '' || record.actionsTaken === 'ND') {
                 record.actionsTaken = 'Unknown';
+              }
+              
+              // Handle coordinate values - keep as strings to match schema
+              if (record.longitude === 'ND' || record.longitude === '') {
+                record.longitude = '';
+              }
+              
+              if (record.latitude === 'ND' || record.latitude === '') {
+                record.latitude = '';
+              }
+              
+              // Handle sitio field - can be empty
+              if (record.sitio === 'ND' || record.sitio === '') {
+                record.sitio = '';
+              }
+              
+              // Handle date fields - can be empty
+              if (record.dateOfActionTaken === 'ND' || record.dateOfActionTaken === 'NA') {
+                record.dateOfActionTaken = '';
+              }
+              
+              if (record.dateIssued === 'ND' || record.dateIssued === 'NA') {
+                record.dateIssued = '';
+              }
+              
+              // Handle details and remarks - can be empty
+              if (record.details === 'ND') {
+                record.details = '';
+              }
+              
+              if (record.remarks === 'ND') {
+                record.remarks = '';
+              }
+              
+              if (record.lawsViolated === 'ND') {
+                record.lawsViolated = '';
+              }
+              
+              // Handle googleMapLink - can be empty
+              if (record.googleMapLink === 'ND') {
+                record.googleMapLink = '';
               }
               
               results.push(record);

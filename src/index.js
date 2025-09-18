@@ -6,6 +6,9 @@ import job from "./lib/cron.js";
 import authRoutes from "./routes/authRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import directoryRoutes from "./routes/directoryRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
+import reportDraftsRoutes from "./routes/reportDraftsRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 import { connectDB } from "./lib/db.js";
 
@@ -24,6 +27,9 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/directory", directoryRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/reportdrafts", reportDraftsRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
