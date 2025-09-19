@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 import User from '../models/User.js';
 import Report from '../models/Report.js';
 import DirectoryNational from '../models/DirectoryNational.js';
@@ -7,9 +8,10 @@ import DirectoryLocal from '../models/DirectoryLocal.js';
 import DirectoryHotspots from '../models/DirectoryHotspots.js';
 
 const router = express.Router();
+router.use(cookieParser());
 
 // Admin login
-router.post('/login', async (req, res) => {
+router.post('/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -25,9 +27,17 @@ router.post('/login', async (req, res) => {
         { expiresIn: '24h' }
       );
 
+      // Set HTTP-only cookie
+      res.cookie('admin_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+      });
+
       res.json({
         success: true,
-        token,
         admin: {
           id: 'admin',
           username: 'adminMineRadar',
@@ -49,23 +59,93 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Middleware to verify admin token
+// Admin logout
+router.post('/auth/logout', async (req, res) => {
+  try {
+    res.clearCookie('admin_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+    });
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Admin logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during logout'
+    });
+  }
+});
+
+// Admin auth verification
+router.get('/auth/verify', async (req, res) => {
+  try {
+    const token = req.cookies.admin_token;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      });
+    }
+
+    res.json({
+      success: true,
+      admin: {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role
+      }
+    });
+  } catch (error) {
+    console.error('Admin auth verification error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+});
+
+// Middleware to verify admin token from cookies
 const verifyAdminToken = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.admin_token;
 
   if (!token) {
-    return res.status(401).json({ message: 'No token, authorization denied' });
+    return res.status(401).json({ 
+      success: false,
+      message: 'No token, authorization denied' 
+    });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied. Admin role required.' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied. Admin role required.' 
+      });
     }
     req.admin = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    res.status(401).json({ 
+      success: false,
+      message: 'Token is not valid' 
+    });
   }
 };
 
