@@ -28,15 +28,19 @@ router.post('/auth/login', async (req, res) => {
       );
 
       // Set HTTP-only cookie
-      res.cookie('admin_token', token, {
+      const cookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true, // Always use secure in production
+        sameSite: 'none', // Required for cross-origin cookies
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         // Don't set domain for cross-origin cookies
         domain: undefined
-      });
+      };
+      
+      console.log('Setting cookie with options:', cookieOptions);
+      res.cookie('admin_token', token, cookieOptions);
 
+      console.log('Login successful, sending response');
       res.json({
         success: true,
         admin: {
@@ -65,8 +69,8 @@ router.post('/auth/logout', async (req, res) => {
   try {
     res.clearCookie('admin_token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: true,
+      sameSite: 'none',
       domain: undefined
     });
     
@@ -86,24 +90,33 @@ router.post('/auth/logout', async (req, res) => {
 // Admin auth verification
 router.get('/auth/verify', async (req, res) => {
   try {
+    console.log('Auth verify request received');
+    console.log('Cookies:', req.cookies);
+    console.log('Headers:', req.headers);
+    
     const token = req.cookies.admin_token;
 
     if (!token) {
+      console.log('No token found in cookies');
       return res.status(401).json({
         success: false,
         message: 'No token provided'
       });
     }
 
+    console.log('Token found, verifying...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token decoded successfully:', decoded);
     
     if (decoded.role !== 'admin') {
+      console.log('Invalid role:', decoded.role);
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin role required.'
       });
     }
 
+    console.log('Auth verification successful');
     res.json({
       success: true,
       admin: {
