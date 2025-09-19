@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "seed": "node scripts/seedDatabase.js"
+    "seed": "node scripts/seedDatabase.js",
+    "test-clean": "node scripts/testPermitCleaning.js",
+    "scan-data": "node scripts/scanCorruptedData.js",
+    "clean-preview": "node scripts/cleanPermitNumbers.js",
+    "clean-execute": "node scripts/cleanPermitNumbers.js --execute"
   },
   "keywords": [],
   "author": "",
