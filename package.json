@@ -5,11 +5,16 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "build": "echo 'No build step required'",
     "seed": "node scripts/seedDatabase.js",
     "test-clean": "node scripts/testPermitCleaning.js",
     "scan-data": "node scripts/scanCorruptedData.js",
     "clean-preview": "node scripts/cleanPermitNumbers.js",
     "clean-execute": "node scripts/cleanPermitNumbers.js --execute"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "keywords": [],
   "author": "",
