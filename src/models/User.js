@@ -22,6 +22,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    role: {
+      type: String,
+      enum: ['normal_user', 'reporter_user', 'admin'],
+      default: 'normal_user',
+    },
+    status: {
+      type: String,
+      enum: ['active', 'blocked'],
+      default: 'active',
+    },
   },
   { timestamps: true }
 );
