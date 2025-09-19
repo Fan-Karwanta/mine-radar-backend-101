@@ -33,7 +33,8 @@ router.post('/auth/login', async (req, res) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+        // Don't set domain for cross-origin cookies
+        domain: undefined
       });
 
       res.json({
@@ -66,7 +67,7 @@ router.post('/auth/logout', async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+      domain: undefined
     });
     
     res.json({

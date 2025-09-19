@@ -33,7 +33,26 @@ const corsOptions = {
       'http://localhost:3001'
     ];
     
+    // Check for exact match first
     if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+      return;
+    }
+    
+    // Check for Vercel preview/deployment URLs (they have dynamic subdomains)
+    const isVercelPreview = origin && (
+      origin.includes('mine-radar-admin') && 
+      origin.includes('.vercel.app')
+    );
+    
+    // Check for localhost with any port
+    const isLocalhost = origin && (
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('https://localhost:')
+    );
+    
+    if (isVercelPreview || isLocalhost) {
+      console.log('CORS allowed origin:', origin);
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
