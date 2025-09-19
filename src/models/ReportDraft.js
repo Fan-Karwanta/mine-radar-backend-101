@@ -33,12 +33,12 @@ const reportDraftSchema = new mongoose.Schema({
   
   // Location Information
   gpsLocation: {
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true }
+    latitude: { type: Number, required: false },
+    longitude: { type: Number, required: false }
   },
   location: {
     type: String,
-    required: true
+    required: false
   },
   
   // Incident Details
