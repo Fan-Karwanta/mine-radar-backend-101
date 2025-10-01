@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
 
     // Execute query with pagination and populate user info
     const reports = await Report.find(filter)
-      .populate('submittedBy', 'email completeName username')
+      .populate('submittedBy', 'email completeName')
       .sort({ submittedAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -155,7 +155,7 @@ router.get('/stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
-      .populate('submittedBy', 'email completeName username');
+      .populate('submittedBy', 'email completeName');
     
     if (!report) {
       return res.status(404).json({
@@ -356,7 +356,7 @@ router.get('/user/:userId', async (req, res) => {
         { status: { $exists: false } }
       ]
     })
-      .populate('submittedBy', 'email completeName username')
+      .populate('submittedBy', 'email completeName')
       .sort({ submittedAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)

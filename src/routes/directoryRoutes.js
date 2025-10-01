@@ -25,11 +25,17 @@ router.get("/national", async (req, res) => {
     if (status) query.status = { $regex: status, $options: "i" };
     if (classification) query.classification = { $regex: classification, $options: "i" };
     if (type && type !== "all") {
-      // Exclude applications when filtering by specific permit type
-      query.$and = [
-        { type: { $regex: type, $options: "i" } },
-        { type: { $not: /application/i } }
-      ];
+      // Check if the selected type itself contains "application"
+      if (type.toLowerCase().includes('application')) {
+        // If user explicitly selects an "Application for" type, show only those
+        query.type = { $regex: type, $options: "i" };
+      } else {
+        // Otherwise, exclude applications when filtering by specific permit type
+        query.$and = [
+          { type: { $regex: type, $options: "i" } },
+          { type: { $not: /application/i } }
+        ];
+      }
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -82,11 +88,17 @@ router.get("/local", async (req, res) => {
     if (status) query.status = { $regex: status, $options: "i" };
     if (classification) query.classification = { $regex: classification, $options: "i" };
     if (type && type !== "all") {
-      // Exclude applications when filtering by specific permit type
-      query.$and = [
-        { type: { $regex: type, $options: "i" } },
-        { type: { $not: /application/i } }
-      ];
+      // Check if the selected type itself contains "application"
+      if (type.toLowerCase().includes('application')) {
+        // If user explicitly selects an "Application for" type, show only those
+        query.type = { $regex: type, $options: "i" };
+      } else {
+        // Otherwise, exclude applications when filtering by specific permit type
+        query.$and = [
+          { type: { $regex: type, $options: "i" } },
+          { type: { $not: /application/i } }
+        ];
+      }
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);

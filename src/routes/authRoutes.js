@@ -11,19 +11,15 @@ const generateToken = (userId) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { email, username, password, completeName, agency, position, contactNumber } = req.body;
+    const { email, password, completeName, agency, position, contactNumber } = req.body;
 
     // Validate required fields
-    if (!username || !email || !password || !completeName || !agency || !position || !contactNumber) {
+    if (!email || !password || !completeName || !agency || !position || !contactNumber) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: "Password should be at least 6 characters long" });
-    }
-
-    if (username.length < 3) {
-      return res.status(400).json({ message: "Username should be at least 3 characters long" });
     }
 
     if (completeName.length < 2) {
@@ -50,17 +46,11 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
-      return res.status(400).json({ message: "Username already exists" });
-    }
-
     // Leave profile image empty by default - user can upload later
     const profileImage = "";
 
     const user = new User({
       email,
-      username,
       password,
       completeName,
       agency,
@@ -77,7 +67,6 @@ router.post("/register", async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: user.username,
         email: user.email,
         completeName: user.completeName,
         agency: user.agency,
@@ -115,7 +104,6 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: user.username,
         email: user.email,
         completeName: user.completeName,
         agency: user.agency,
@@ -159,7 +147,6 @@ router.put("/update-profile", protectRoute, async (req, res) => {
     res.status(200).json({
       user: {
         id: user._id,
-        username: user.username,
         email: user.email,
         completeName: user.completeName,
         agency: user.agency,

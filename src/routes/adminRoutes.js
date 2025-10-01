@@ -13,10 +13,10 @@ router.use(cookieParser());
 // Admin signup
 router.post('/auth/signup', async (req, res) => {
   try {
-    const { completeName, username, email, password, agency, position, contactNumber } = req.body;
+    const { completeName, email, password, agency, position, contactNumber } = req.body;
 
     // Validation
-    if (!completeName || !username || !email || !password || !agency || !position || !contactNumber) {
+    if (!completeName || !email || !password || !agency || !position || !contactNumber) {
       return res.status(400).json({
         success: false,
         message: "All fields are required"
@@ -30,10 +30,10 @@ router.post('/auth/signup', async (req, res) => {
       });
     }
 
-    if (username.length < 3) {
+    if (completeName.length < 2) {
       return res.status(400).json({
         success: false,
-        message: "Username should be at least 3 characters long"
+        message: "Complete name should be at least 2 characters long"
       });
     }
 
@@ -46,21 +46,12 @@ router.post('/auth/signup', async (req, res) => {
       });
     }
 
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
-      return res.status(400).json({
-        success: false,
-        message: "Username already exists"
-      });
-    }
-
-    // Generate profile image
-    const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+    // Generate profile image using email
+    const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`;
 
     // Create new admin user (pending approval)
     const user = new User({
       completeName,
-      username,
       email,
       password,
       agency,
@@ -79,7 +70,6 @@ router.post('/auth/signup', async (req, res) => {
       message: "Admin account created successfully. Please wait for approval.",
       user: {
         id: user._id,
-        username: user.username,
         email: user.email,
         completeName: user.completeName,
         agency: user.agency,
@@ -102,14 +92,14 @@ router.post('/auth/signup', async (req, res) => {
 // Admin login
 router.post('/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    // Check for hardcoded admin credentials first
-    if (username === 'adminMineRadar' && password === 'admin_mineradar1234') {
+    // Check for hardcoded admin credentials first (using email)
+    if (email === 'admin@mineradar.com' && password === 'admin_mineradar1234') {
       const token = jwt.sign(
         { 
           id: 'admin', 
-          username: 'adminMineRadar', 
+          email: 'admin@mineradar.com', 
           role: 'admin' 
         },
         process.env.JWT_SECRET,
@@ -121,14 +111,15 @@ router.post('/auth/login', async (req, res) => {
         token: token,
         admin: {
           id: 'admin',
-          username: 'adminMineRadar',
+          email: 'admin@mineradar.com',
+          completeName: 'MineRadar Admin',
           role: 'admin'
         }
       });
     }
 
     // Check database for registered admin users
-    const user = await User.findOne({ username, role: 'admin' });
+    const user = await User.findOne({ email, role: 'admin' });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -156,7 +147,7 @@ router.post('/auth/login', async (req, res) => {
     const token = jwt.sign(
       { 
         id: user._id, 
-        username: user.username, 
+        email: user.email, 
         role: user.role 
       },
       process.env.JWT_SECRET,
@@ -168,9 +159,8 @@ router.post('/auth/login', async (req, res) => {
       token: token,
       admin: {
         id: user._id,
-        username: user.username,
-        completeName: user.completeName,
         email: user.email,
+        completeName: user.completeName,
         agency: user.agency,
         position: user.position,
         role: user.role
@@ -230,7 +220,7 @@ router.get('/auth/verify', async (req, res) => {
       success: true,
       admin: {
         id: decoded.id,
-        username: decoded.username,
+        email: decoded.email,
         role: decoded.role
       }
     });
@@ -341,7 +331,7 @@ router.get('/dashboard/analytics', verifyAdminToken, async (req, res) => {
 
     // Get recent reports (last 10)
     const recentReports = await Report.find()
-      .populate('submittedBy', 'email completeName username')
+      .populate('submittedBy', 'email completeName')
       .sort({ submittedAt: -1 })
       .limit(10)
       .select('reportId reportType status submittedBy submittedAt location');
@@ -392,7 +382,7 @@ router.get('/reports', verifyAdminToken, async (req, res) => {
     }
 
     const reports = await Report.find(filter)
-      .populate('submittedBy', 'email completeName username')
+      .populate('submittedBy', 'email completeName')
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -423,7 +413,7 @@ router.get('/reports', verifyAdminToken, async (req, res) => {
 router.get('/reports/:id', verifyAdminToken, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
-      .populate('submittedBy', 'email completeName username');
+      .populate('submittedBy', 'email completeName');
     if (!report) {
       return res.status(404).json({
         success: false,
@@ -520,7 +510,7 @@ router.get('/users', verifyAdminToken, async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.search) {
       filter.$or = [
-        { username: { $regex: req.query.search, $options: 'i' } },
+        { completeName: { $regex: req.query.search, $options: 'i' } },
         { email: { $regex: req.query.search, $options: 'i' } }
       ];
     }
