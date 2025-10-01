@@ -18,19 +18,41 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
+    completeName: {
+      type: String,
+      required: true,
+    },
+    agency: {
+      type: String,
+      required: true,
+    },
+    position: {
+      type: String,
+      required: true,
+    },
+    contactNumber: {
+      type: String,
+      required: true,
+    },
     profileImage: {
       type: String,
       default: "",
     },
     role: {
       type: String,
-      enum: ['normal_user', 'reporter_user', 'admin'],
-      default: 'normal_user',
+      enum: ['Public User', 'Deputized Personnel', 'admin'],
+      default: 'Public User',
     },
     status: {
       type: String,
-      enum: ['active', 'blocked'],
+      enum: ['active', 'blocked', 'pending'],
       default: 'active',
+    },
+    isApproved: {
+      type: Boolean,
+      default: function() {
+        return this.role !== 'admin';
+      },
     },
   },
   { timestamps: true }

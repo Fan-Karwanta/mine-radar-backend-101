@@ -19,7 +19,8 @@ const ReportSchema = new mongoose.Schema({
     required: true
   },
   submittedBy: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   submittedAt: {
@@ -130,7 +131,7 @@ const ReportSchema = new mongoose.Schema({
       unit: String
     },
     vehicleInfo: {
-      type: String,
+      type: { type: String },  // Nested 'type' field (not Mongoose type definition)
       description: String,
       bodyColor: String,
       plateNumber: String
@@ -150,7 +151,7 @@ const ReportSchema = new mongoose.Schema({
   // ILLEGAL PROCESSING SPECIFIC FIELDS
   processingData: {
     facilityInfo: {
-      type: String,
+      type: { type: String },  // Nested 'type' field (not Mongoose type definition)
       processingProducts: String
     },
     rawMaterials: {
@@ -272,19 +273,12 @@ const ReportSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique report ID based on report type
+// Generate unique report ID with unified MR- prefix (MineRadar)
 ReportSchema.pre('save', async function(next) {
   if (!this.reportId) {
-    const count = await this.constructor.countDocuments({ reportType: this.reportType });
-    const prefixes = {
-      'illegal_mining': 'ILM',
-      'illegal_transport': 'ILT',
-      'illegal_processing': 'ILP',
-      'illegal_trading': 'ILD',
-      'illegal_exploration': 'ILE',
-      'illegal_smallscale': 'ILS'
-    };
-    const prefix = prefixes[this.reportType] || 'RPT';
+    // Count all reports regardless of type for unified numbering
+    const count = await this.constructor.countDocuments();
+    const prefix = 'MR'; // Unified prefix for all MineRadar reports
     this.reportId = `${prefix}-${String(count + 1).padStart(6, '0')}`;
   }
   next();

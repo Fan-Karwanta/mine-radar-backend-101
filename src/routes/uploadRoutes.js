@@ -57,6 +57,9 @@ const uploadToCloudinary = (buffer, options = {}) => {
 // POST /api/upload/image - Upload single image to Cloudinary
 router.post('/image', upload.single('image'), async (req, res) => {
   try {
+    console.log('📥 Received upload request');
+    console.log('File:', req.file ? 'Yes' : 'No');
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -64,18 +67,27 @@ router.post('/image', upload.single('image'), async (req, res) => {
       });
     }
 
+    console.log('📦 File details:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
+
     // Parse geo data if provided
     let geoData = null;
     if (req.body.geoData) {
       try {
         geoData = JSON.parse(req.body.geoData);
+        console.log('📍 Geo data:', geoData);
       } catch (error) {
         console.warn('Invalid geo data format:', error);
       }
     }
 
-    // Upload to Cloudinary
+    // Upload to Cloudinary with signed upload
     const uploadOptions = {
+      folder: 'mining-reports',
+      resource_type: 'image',
       public_id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     };
 
@@ -84,7 +96,9 @@ router.post('/image', upload.single('image'), async (req, res) => {
       uploadOptions.context = `lat=${geoData.latitude}|lng=${geoData.longitude}`;
     }
 
+    console.log('☁️ Uploading to Cloudinary...');
     const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+    console.log('✅ Cloudinary upload successful:', result.secure_url);
 
     res.json({
       success: true,
@@ -98,7 +112,7 @@ router.post('/image', upload.single('image'), async (req, res) => {
       uploadedAt: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error uploading image to Cloudinary:', error);
+    console.error('❌ Error uploading image to Cloudinary:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to upload image',

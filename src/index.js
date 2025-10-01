@@ -18,11 +18,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 job.start();
-app.use(express.json());
-app.use(cookieParser());
 
-// CORS configuration for admin panel
-const corsOptions = {
+// CORS must be before other middleware
+app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
@@ -59,13 +57,16 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Allow cookies and credentials
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Accept'],
   exposedHeaders: ['Set-Cookie']
-};
+}));
 
-app.use(cors(corsOptions));
+// Body parsing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 
 // Health check endpoint
 app.get("/", (req, res) => {

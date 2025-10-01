@@ -24,13 +24,19 @@ router.get("/national", async (req, res) => {
     if (province) query.province = { $regex: province, $options: "i" };
     if (status) query.status = { $regex: status, $options: "i" };
     if (classification) query.classification = { $regex: classification, $options: "i" };
-    if (type) query.type = { $regex: type, $options: "i" };
+    if (type && type !== "all") {
+      // Exclude applications when filtering by specific permit type
+      query.$and = [
+        { type: { $regex: type, $options: "i" } },
+        { type: { $not: /application/i } }
+      ];
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     const [records, total] = await Promise.all([
       DirectoryNational.find(query)
-        .sort({ createdAt: -1 })
+        .sort({ contractNumber: 1, createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
       DirectoryNational.countDocuments(query)
@@ -75,13 +81,19 @@ router.get("/local", async (req, res) => {
     if (province) query.province = { $regex: province, $options: "i" };
     if (status) query.status = { $regex: status, $options: "i" };
     if (classification) query.classification = { $regex: classification, $options: "i" };
-    if (type) query.type = { $regex: type, $options: "i" };
+    if (type && type !== "all") {
+      // Exclude applications when filtering by specific permit type
+      query.$and = [
+        { type: { $regex: type, $options: "i" } },
+        { type: { $not: /application/i } }
+      ];
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     const [records, total] = await Promise.all([
       DirectoryLocal.find(query)
-        .sort({ createdAt: -1 })
+        .sort({ permitNumber: 1, createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
       DirectoryLocal.countDocuments(query)
@@ -134,7 +146,7 @@ router.get("/hotspots", async (req, res) => {
     
     const [records, total] = await Promise.all([
       DirectoryHotspots.find(query)
-        .sort({ createdAt: -1 })
+        .sort({ complaintNumber: 1, createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
       DirectoryHotspots.countDocuments(query)

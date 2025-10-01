@@ -69,8 +69,9 @@ router.get('/', async (req, res) => {
       if (endDate) filter.submittedAt.$lte = new Date(endDate);
     }
 
-    // Execute query with pagination
+    // Execute query with pagination and populate user info
     const reports = await Report.find(filter)
+      .populate('submittedBy', 'email completeName username')
       .sort({ submittedAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -153,7 +154,8 @@ router.get('/stats', async (req, res) => {
 // GET /api/reports/:id - Get specific report by ID
 router.get('/:id', async (req, res) => {
   try {
-    const report = await Report.findById(req.params.id);
+    const report = await Report.findById(req.params.id)
+      .populate('submittedBy', 'email completeName username');
     
     if (!report) {
       return res.status(404).json({
@@ -226,14 +228,29 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
         break;
     }
 
-    // Handle file attachments
+    // Handle Cloudinary attachments (already uploaded images)
+    if (reportData.cloudinaryAttachments) {
+      try {
+        const cloudinaryAttachments = typeof reportData.cloudinaryAttachments === 'string' 
+          ? JSON.parse(reportData.cloudinaryAttachments) 
+          : reportData.cloudinaryAttachments;
+        
+        reportData.attachments = cloudinaryAttachments;
+        console.log('✅ Using Cloudinary attachments:', cloudinaryAttachments.length);
+      } catch (error) {
+        console.error('Error parsing Cloudinary attachments:', error);
+      }
+    }
+    
+    // Handle file attachments (legacy/fallback)
     if (req.files && req.files.length > 0) {
       reportData.attachments = req.files.map(file => ({
         filename: file.originalname,
         path: file.path,
         uploadedAt: new Date(),
-        geotagged: false // This could be enhanced to read EXIF data
+        geotagged: false
       }));
+      console.log('✅ Using file attachments:', req.files.length);
     }
 
     // Create new report
@@ -339,6 +356,7 @@ router.get('/user/:userId', async (req, res) => {
         { status: { $exists: false } }
       ]
     })
+      .populate('submittedBy', 'email completeName username')
       .sort({ submittedAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)

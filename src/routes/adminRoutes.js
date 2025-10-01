@@ -10,12 +10,101 @@ import DirectoryHotspots from '../models/DirectoryHotspots.js';
 const router = express.Router();
 router.use(cookieParser());
 
+// Admin signup
+router.post('/auth/signup', async (req, res) => {
+  try {
+    const { completeName, username, email, password, agency, position, contactNumber } = req.body;
+
+    // Validation
+    if (!completeName || !username || !email || !password || !agency || !position || !contactNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password should be at least 6 characters long"
+      });
+    }
+
+    if (username.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: "Username should be at least 3 characters long"
+      });
+    }
+
+    // Check if user already exists
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({
+        success: false,
+        message: "Username already exists"
+      });
+    }
+
+    // Generate profile image
+    const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+
+    // Create new admin user (pending approval)
+    const user = new User({
+      completeName,
+      username,
+      email,
+      password,
+      agency,
+      position,
+      contactNumber,
+      profileImage,
+      role: 'admin',
+      status: 'pending',
+      isApproved: false
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Admin account created successfully. Please wait for approval.",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        completeName: user.completeName,
+        agency: user.agency,
+        position: user.position,
+        contactNumber: user.contactNumber,
+        status: user.status,
+        isApproved: user.isApproved,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Admin signup error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
 // Admin login
 router.post('/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Check for hardcoded admin credentials
+    // Check for hardcoded admin credentials first
     if (username === 'adminMineRadar' && password === 'admin_mineradar1234') {
       const token = jwt.sign(
         { 
@@ -27,8 +116,7 @@ router.post('/auth/login', async (req, res) => {
         { expiresIn: '24h' }
       );
 
-      // Send token in response (client will store in localStorage)
-      res.json({
+      return res.json({
         success: true,
         token: token,
         admin: {
@@ -37,12 +125,57 @@ router.post('/auth/login', async (req, res) => {
           role: 'admin'
         }
       });
-    } else {
-      res.status(401).json({
+    }
+
+    // Check database for registered admin users
+    const user = await User.findOne({ username, role: 'admin' });
+    if (!user) {
+      return res.status(401).json({
         success: false,
         message: 'Invalid admin credentials'
       });
     }
+
+    // Check if user is approved
+    if (!user.isApproved || user.status !== 'active') {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is pending approval or has been blocked'
+      });
+    }
+
+    // Check password
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin credentials'
+      });
+    }
+
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        username: user.username, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      token: token,
+      admin: {
+        id: user._id,
+        username: user.username,
+        completeName: user.completeName,
+        email: user.email,
+        agency: user.agency,
+        position: user.position,
+        role: user.role
+      }
+    });
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({
@@ -208,6 +341,7 @@ router.get('/dashboard/analytics', verifyAdminToken, async (req, res) => {
 
     // Get recent reports (last 10)
     const recentReports = await Report.find()
+      .populate('submittedBy', 'email completeName username')
       .sort({ submittedAt: -1 })
       .limit(10)
       .select('reportId reportType status submittedBy submittedAt location');
@@ -258,6 +392,7 @@ router.get('/reports', verifyAdminToken, async (req, res) => {
     }
 
     const reports = await Report.find(filter)
+      .populate('submittedBy', 'email completeName username')
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -287,7 +422,8 @@ router.get('/reports', verifyAdminToken, async (req, res) => {
 // Get single report by ID
 router.get('/reports/:id', verifyAdminToken, async (req, res) => {
   try {
-    const report = await Report.findById(req.params.id);
+    const report = await Report.findById(req.params.id)
+      .populate('submittedBy', 'email completeName username');
     if (!report) {
       return res.status(404).json({
         success: false,
@@ -422,7 +558,7 @@ router.put('/users/:id/role', verifyAdminToken, async (req, res) => {
   try {
     const { role } = req.body;
     
-    if (!['normal_user', 'reporter_user', 'admin'].includes(role)) {
+    if (!['Public User', 'Deputized Personnel', 'admin'].includes(role)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid role value'
@@ -514,6 +650,94 @@ router.delete('/users/:id', verifyAdminToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting user'
+    });
+  }
+});
+
+// Get pending admin approvals
+router.get('/pending-admins', verifyAdminToken, async (req, res) => {
+  try {
+    const pendingAdmins = await User.find({ 
+      role: 'admin', 
+      status: 'pending',
+      isApproved: false 
+    }).select('-password').sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: pendingAdmins
+    });
+  } catch (error) {
+    console.error('Get pending admins error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching pending admin approvals'
+    });
+  }
+});
+
+// Approve admin user
+router.put('/approve-admin/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status: 'active',
+        isApproved: true 
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin user approved successfully',
+      data: user
+    });
+  } catch (error) {
+    console.error('Approve admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error approving admin user'
+    });
+  }
+});
+
+// Reject admin user
+router.put('/reject-admin/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status: 'blocked',
+        isApproved: false 
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin user rejected successfully',
+      data: user
+    });
+  } catch (error) {
+    console.error('Reject admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error rejecting admin user'
     });
   }
 });
