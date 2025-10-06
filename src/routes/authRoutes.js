@@ -11,12 +11,18 @@ const generateToken = (userId) => {
 
 router.post("/register", async (req, res) => {
   try {
+    console.log("=== REGISTER REQUEST ===");
+    console.log("Request body:", req.body);
+    
     const { email, password, completeName, agency, position, contactNumber } = req.body;
 
     // Validate required fields
     if (!email || !password || !completeName || !agency || !position || !contactNumber) {
+      console.log("Missing required fields");
       return res.status(400).json({ message: "All fields are required" });
     }
+    
+    console.log("All required fields present");
 
     if (password.length < 6) {
       return res.status(400).json({ message: "Password should be at least 6 characters long" });
@@ -41,14 +47,18 @@ router.post("/register", async (req, res) => {
     }
 
     // check if user already exists
+    console.log("Checking for existing email...");
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
+      console.log("Email already exists:", email);
       return res.status(400).json({ message: "Email already exists" });
     }
+    console.log("Email is unique");
 
     // Leave profile image empty by default - user can upload later
     const profileImage = "";
 
+    console.log("Creating new user...");
     const user = new User({
       email,
       password,
@@ -59,7 +69,9 @@ router.post("/register", async (req, res) => {
       profileImage,
     });
 
+    console.log("Saving user to database...");
     await user.save();
+    console.log("User saved successfully:", user._id);
 
     const token = generateToken(user._id);
 
@@ -79,8 +91,32 @@ router.post("/register", async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("Error in register route", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.log("=== ERROR IN REGISTER ROUTE ===");
+    console.log("Error:", error);
+    console.log("Error message:", error.message);
+    console.log("Error name:", error.name);
+    console.log("Error stack:", error.stack);
+    
+    // Check for specific error types
+    if (error.name === 'ValidationError') {
+      console.log("Validation error details:", error.errors);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        details: error.message 
+      });
+    }
+    
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+      console.log("Duplicate key error:", error.keyPattern);
+      return res.status(400).json({ 
+        message: "Email already exists" 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Internal server error",
+      details: error.message
+    });
   }
 });
 
@@ -97,6 +133,14 @@ router.post("/login", async (req, res) => {
     // check if password is correct
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Check if user is blocked
+    if (user.status === 'blocked') {
+      return res.status(403).json({ 
+        message: "Your account has been blocked by the administrator. Please contact MGB CALABARZON for support.",
+        blocked: true 
+      });
+    }
 
     const token = generateToken(user._id);
 
