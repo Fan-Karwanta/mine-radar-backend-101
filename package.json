@@ -10,7 +10,8 @@
     "test-clean": "node scripts/testPermitCleaning.js",
     "scan-data": "node scripts/scanCorruptedData.js",
     "clean-preview": "node scripts/cleanPermitNumbers.js",
-    "clean-execute": "node scripts/cleanPermitNumbers.js --execute"
+    "clean-execute": "node scripts/cleanPermitNumbers.js --execute",
+    "fix-username-index": "node scripts/fixUsernameIndex.js"
   },
   "engines": {
     "node": ">=18.0.0",

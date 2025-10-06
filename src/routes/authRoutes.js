@@ -108,9 +108,11 @@ router.post("/register", async (req, res) => {
     
     if (error.name === 'MongoServerError' && error.code === 11000) {
       console.log("Duplicate key error:", error.keyPattern);
-      return res.status(400).json({ 
-        message: "Email already exists" 
-      });
+      const field = Object.keys(error.keyPattern)[0];
+      const message = field === 'email' 
+        ? "Email already exists" 
+        : `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+      return res.status(400).json({ message });
     }
     
     res.status(500).json({ 
